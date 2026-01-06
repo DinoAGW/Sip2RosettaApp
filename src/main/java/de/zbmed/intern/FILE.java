@@ -6,6 +6,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Stack;
 
 import com.exlibris.core.sdk.formatting.DublinCore;
@@ -15,8 +16,11 @@ import com.exlibris.digitool.common.dnx.DnxDocumentHelper.AccessRightsPolicy;
 import com.exlibris.digitool.common.dnx.DnxDocumentHelper.FileFixity;
 import com.exlibris.dps.sdk.deposit.IEParser;
 
+import de.zbmed.rosetta.IEWS;
 import de.zbmed.utilities.Utilities;
 import de.zbmed.utilities.XML;
+import de.zbmed.utilities.XML.NODE;
+import de.zbmed.utilities.XML.NODELIST;
 import gov.loc.mets.DivType;
 import gov.loc.mets.FileType;
 import gov.loc.mets.MetsType.FileSec.FileGrp;
@@ -61,10 +65,9 @@ public class FILE {
 		} else if (dateipfad.startsWith("http://") || dateipfad.startsWith("https://")) {
 			this.datenQuelle = Datenquelle.Internet;
 			this.pfadDerDatei = dateipfad;
-		} else if (dateipfad.startsWith("rosetta")) {
+		} else if (dateipfad.startsWith("rosetta://")) {
 			this.datenQuelle = Datenquelle.Rosetta;
-			this.pfadDerDatei = dateipfad;
-			throw new Exception("Muss noch ausgearbeitet werden");
+			this.pfadDerDatei = dateipfad.substring(10);
 		} else {
 			throw new Exception("Dateipfad muss mit einem gültigen Protokoll anfangen");
 		}
@@ -265,27 +268,29 @@ public class FILE {
 
 	private FILE loadFromMetsSip(File metsFile, String id) throws Exception {
 		XML metsXml = new XML(metsFile);
-		XML.NODE metsNode = metsXml.getNode().getChildren().filter("nameEquals", "mets:mets").get(0);
+		NODE metsNode = metsXml.getNode().getChildren().filter("nameEquals", "mets:mets").get(0);
 
-		XML.NODE fileAmd = metsNode.getChildren().filter("attrEquals", "mets:amdSec", "ID", id + "-amd").get(0);
-		XML.NODE arPolicyRecord = fileAmd.getChildren().filter("nameEquals", "mets:rightsMD").get(0).getChildren()
+		NODE fileAmd = metsNode.getChildren().filter("attrEquals", "mets:amdSec", "ID", id + "-amd").get(0);
+		NODELIST accessRightsPolicy = fileAmd.getChildren().filter("nameEquals", "mets:rightsMD").get(0).getChildren()
 				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
 				.getChildren().filter("nameEquals", "dnx").get(0).getChildren()
-				.filter("attrEquals", "section", "id", "accessRightsPolicy").get(0).getChildren()
-				.filter("nameEquals", "record").get(0);
-		String arPolicyId = arPolicyRecord.getChildren().filter("attrEquals", "key", "id", "policyId").get(0)
-				.getTextContent();
-		String arPolicyDescription = arPolicyRecord.getChildren().filter("attrEquals", "key", "id", "policyDescription")
-				.get(0).getTextContent();
-		this.setARPolicy(arPolicyId, arPolicyDescription);
-		XML.NODE techMdDnx = fileAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
+				.filter("attrEquals", "section", "id", "accessRightsPolicy");
+		if (accessRightsPolicy.size() > 0) {
+			NODE arPolicyRecord = accessRightsPolicy.get(0).getChildren().filter("nameEquals", "record").get(0);
+			String arPolicyId = arPolicyRecord.getChildren().filter("attrEquals", "key", "id", "policyId").get(0)
+					.getTextContent();
+			String arPolicyDescription = arPolicyRecord.getChildren()
+					.filter("attrEquals", "key", "id", "policyDescription").get(0).getTextContent();
+			this.setARPolicy(arPolicyId, arPolicyDescription);
+		}
+		NODE techMdDnx = fileAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
 				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
 				.getChildren().filter("nameEquals", "dnx").get(0);
 		String label = techMdDnx.getChildren().filter("attrEquals", "section", "id", "generalFileCharacteristics")
 				.get(0).getChildren().filter("nameEquals", "record").get(0).getChildren()
 				.filter("attrEquals", "key", "id", "label").get(0).getTextContent();
 		this.setLabel(label);
-		XML.NODE fileFixityRecord = techMdDnx.getChildren().filter("attrEquals", "section", "id", "fileFixity").get(0)
+		NODE fileFixityRecord = techMdDnx.getChildren().filter("attrEquals", "section", "id", "fileFixity").get(0)
 				.getChildren().filter("nameEquals", "record").get(0);
 		if (!fileFixityRecord.getChildren().filter("attrEquals", "key", "id", "fixityType").get(0).getTextContent()
 				.contentEquals("MD5")) {
@@ -295,12 +300,60 @@ public class FILE {
 		String fixityValue = fileFixityRecord.getChildren().filter("attrEquals", "key", "id", "fixityValue").get(0)
 				.getTextContent();
 		this.setMd5sum(fixityValue);
-		XML.NODELIST fileDmds = metsNode.getChildren().filter("attrEquals", "mets:dmdSec", "ID", id + "-dmd");
+		NODELIST fileDmds = metsNode.getChildren().filter("attrEquals", "mets:dmdSec", "ID", id + "-dmd");
 		if (fileDmds.size() != 0) {
-			XML.NODELIST ieMetadata = fileDmds.get(0).getChildren().filter("nameEquals", "mets:mdWrap").get(0)
-					.getChildren().filter("nameEquals", "mets:xmlData").get(0).getChildren()
-					.filter("nameEquals", "dc:record").get(0).getChildren();
-			for (XML.NODE md : ieMetadata) {
+			NODELIST ieMetadata = fileDmds.get(0).getChildren().filter("nameEquals", "mets:mdWrap").get(0).getChildren()
+					.filter("nameEquals", "mets:xmlData").get(0).getChildren().filter("nameEquals", "dc:record").get(0)
+					.getChildren();
+			for (NODE md : ieMetadata) {
+				this.addMetadata(md.getXPathKey(), md.getTextContent());
+			}
+		}
+		return this;
+	}
+
+	public FILE loadFromRosetta(String rosettaInstance, String iePid, XML metsXml, String id) throws Exception {
+		if (metsXml == null) {
+			metsXml = IEWS.getIE(iePid, rosettaInstance);
+		}
+		NODE metsNode = metsXml.getNode().getChildren().filter("nameEquals", "mets:mets").get(0);
+
+		NODE fileAmd = metsNode.getChildren().filter("attrEquals", "mets:amdSec", "ID", id + "-amd").get(0);
+		NODELIST accessRightsPolicies = fileAmd.getChildren().filter("nameEquals", "mets:rightsMD").get(0).getChildren()
+				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
+				.getChildren().filter("nameEquals", "dnx").get(0).getChildren()
+				.filter("attrEquals", "section", "id", "accessRightsPolicy");
+		if (accessRightsPolicies.size() != 0) {
+			NODE arPolicyRecord = accessRightsPolicies.get(0).getChildren().filter("nameEquals", "record").get(0);
+			String arPolicyId = arPolicyRecord.getChildren().filter("attrEquals", "key", "id", "policyId").get(0)
+					.getTextContent();
+			String arPolicyDescription = arPolicyRecord.getChildren()
+					.filter("attrEquals", "key", "id", "policyDescription").get(0).getTextContent();
+			this.setARPolicy(arPolicyId, arPolicyDescription);
+		}
+		NODE techMdDnx = fileAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
+				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
+				.getChildren().filter("nameEquals", "dnx").get(0);
+		String label = techMdDnx.getChildren().filter("attrEquals", "section", "id", "generalFileCharacteristics")
+				.get(0).getChildren().filter("nameEquals", "record").get(0).getChildren()
+				.filter("attrEquals", "key", "id", "label").get(0).getTextContent();
+		this.setLabel(label);
+		NODE fileFixityRecord = techMdDnx.getChildren().filter("attrEquals", "section", "id", "fileFixity").get(0)
+				.getChildren().filter("nameEquals", "record").get(0);
+		if (!fileFixityRecord.getChildren().filter("attrEquals", "key", "id", "fixityType").get(0).getTextContent()
+				.contentEquals("MD5")) {
+			throw new Exception(
+					"An dieser Stelle wird eigentlich nur MD5 erwartet, auch wenn andere fixityTypes auch machbar wären");
+		}
+		String fixityValue = fileFixityRecord.getChildren().filter("attrEquals", "key", "id", "fixityValue").get(0)
+				.getTextContent();
+		this.setMd5sum(fixityValue);
+		NODELIST fileDmds = metsNode.getChildren().filter("attrEquals", "mets:dmdSec", "ID", id + "-dmd");
+		if (fileDmds.size() != 0) {
+			NODELIST ieMetadata = fileDmds.get(0).getChildren().filter("nameEquals", "mets:mdWrap").get(0).getChildren()
+					.filter("nameEquals", "mets:xmlData").get(0).getChildren().filter("nameEquals", "dc:record").get(0)
+					.getChildren();
+			for (NODE md : ieMetadata) {
 				this.addMetadata(md.getXPathKey(), md.getTextContent());
 			}
 		}
@@ -317,5 +370,113 @@ public class FILE {
 		}
 		throw new Exception(
 				"IngestDatei Dateiendung nicht implementiert: " + ingestFilePath.substring(contentPath.length()));
+	}
+
+	private String getMd5sum() throws Exception {
+		if (this.md5sum != null) {
+			return this.md5sum;
+		} else if (Objects.equals(this.datenQuelle, Datenquelle.Filesytem)) {
+			this.md5sum = Utilities.calculateMd5Sum(new File(this.pfadDerDatei));
+			return this.md5sum;
+		}
+		throw new Exception("MD5Summe kann zurzeit so nicht ausgegeben werden");
+	}
+
+	public void printoutDiff(REP otherRep) throws Exception {
+		int otherFileIndex = -1;
+		for (int index = 0; index < otherRep.files.size(); ++index) {
+			if (Objects.equals(this.getMd5sum(), otherRep.files.get(index).getMd5sum())) {
+				if (otherFileIndex == -1) {
+					otherFileIndex = index;
+				} else {
+					throw new Exception(
+							"Andere SIP hat mehrere Files, welche dem hiesigen File entsprechen könnten.\nDies ist zurzeit nicht erlaubt.\nMD5 Summe = "
+									+ this.md5sum);
+				}
+			}
+		}
+		if (otherFileIndex == -1) {
+			System.out.println(
+					"Andere SIP hat kein File, welche dem hiesigen File entsprechen könnte.\nDies ist zurzeit nicht erlaubt.\nMD5 Summe = "
+							+ this.md5sum);
+			return;
+		}
+		FILE otherFile = otherRep.files.get(otherFileIndex);
+		System.out.println("FileIndex: " + otherFileIndex);
+
+		if (!Objects.equals(this.fileOriginalName, otherFile.fileOriginalName)
+				|| !Objects.equals(this.fileOriginalPath, otherFile.fileOriginalPath)) {
+			StringBuilder line1 = new StringBuilder("Hier: File ");
+			line1.append(this.fileOriginalName);
+			line1.append(" = ");
+			line1.append(quote(this.fileOriginalPath));
+			line1.append("\n");
+			line1.append("Dort: File ");
+			line1.append(otherFile.fileOriginalName);
+			line1.append(" = ");
+			line1.append(quote(otherFile.fileOriginalPath));
+			System.out.println(line1);
+		}
+		StringBuilder mds = null;
+		for (Metadata md : this.metadata) {
+			boolean same = false;
+			for (Metadata md2 : otherFile.metadata) {
+				if (Objects.equals(md.xPathKey, md2.xPathKey) && Objects.equals(md.value, md2.value)) {
+					same = true;
+					break;
+				}
+			}
+			if (!same) {
+				if (mds == null) {
+					mds = new StringBuilder("Metadaten Unterschiede:");
+				}
+				mds.append("\nHier: ");
+				mds.append(quote(md.xPathKey));
+				mds.append(" = ");
+				mds.append(quote(md.value));
+			}
+		}
+		for (Metadata md : otherFile.metadata) {
+			boolean same = false;
+			for (Metadata md2 : this.metadata) {
+				if (Objects.equals(md.xPathKey, md2.xPathKey) && Objects.equals(md.value, md2.value)) {
+					same = true;
+					break;
+				}
+			}
+			if (!same) {
+				if (mds == null) {
+					mds = new StringBuilder("Metadaten Unterschiede:");
+				}
+				mds.append("\nDort: ");
+				mds.append(quote(md.xPathKey));
+				mds.append(" = ");
+				mds.append(quote(md.value));
+			}
+		}
+		if (mds != null) {
+			System.out.println(mds);
+		}
+
+		if (!Objects.equals(this.label, otherFile.label)) {
+			System.out.println("Hier: Label = ".concat(this.label));
+			System.out.println("Dort: Label = ".concat(otherFile.label));
+		}
+
+		if (!Objects.equals(this.arPolicyId, otherFile.arPolicyId)
+				|| !Objects.equals(this.arPolicyDescription, otherFile.arPolicyDescription)) {
+			StringBuilder arp = new StringBuilder("Hier: AccessRights Policy = ");
+			arp.append(this.arPolicyId);
+			arp.append(" (");
+			arp.append(this.arPolicyDescription);
+			arp.append(")");
+			arp.append("\n");
+			arp.append("Dort: AccessRights Policy = ");
+			arp.append(otherFile.arPolicyId);
+			arp.append(" (");
+			arp.append(otherFile.arPolicyDescription);
+			arp.append(")");
+			System.out.println(arp);
+		}
 	}
 }

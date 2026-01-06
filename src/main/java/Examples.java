@@ -5,9 +5,13 @@ import org.apache.xmlbeans.XmlObject;
 
 import gov.loc.mets.MdSecType.MdWrap.MDTYPE;
 import de.zbmed.intern.*;
+import de.zbmed.rosetta.IEWS;
+import de.zbmed.rosetta.SRU;
+import de.zbmed.utilities.XML;
 
 public class Examples {
 	private static final String fs = System.getProperty("file.separator");
+	public static final String home = System.getProperty("user.home");
 
 	private static String testDatei = "file:///bin" + fs + "Test.txt";
 	private static String sourceMDQuelle = "bin" + fs + "SourceMD.xml";
@@ -111,14 +115,47 @@ public class Examples {
 
 		SIP sipHD = new SIP().loadFromSip(new File("bin" + fs + "minimalSip" + fs + "content" + fs + "mets.xml"));
 		
+		sipHD.newREP("MODIFIED_MASTER").newFile(testDatei, "Test4.txt");
 		maximalSip.printoutDiff(sipHD);
 	}
-
+	
+	public static void loadRosettaExample() throws Exception {
+		String rosettaInstance = "prod";
+		String userDefinedA = "GMSKON_24dgpp10";
+		String iePid = SRU.getIePidToUserDefinedA(rosettaInstance, userDefinedA);
+		System.out.println(iePid);
+		XML mets = IEWS.getIE(iePid, rosettaInstance);
+		System.out.println(XML.getStringFromDocument(mets.getDocument()));
+		SIP rosettaSip = new SIP();
+		rosettaSip.loadFromRosetta(rosettaInstance, iePid, null);
+		rosettaSip.printout();
+	}
+	
+	public static void compareRosettaExampleWithSip() throws Exception {
+		String rosettaInstance = "prod";
+		String userDefinedA = "GMSKON_24dgpp10";
+		String iePid = SRU.getIePidToUserDefinedA(rosettaInstance, userDefinedA);
+		SIP localSip = new SIP().loadFromSip(new File(home + fs + "workspace" + fs + "versuchssip_dgpp2024_24dgpp10" + fs + "content" + fs + "ie1.xml"));
+		SIP rosettaSip = new SIP().loadFromRosetta(rosettaInstance, iePid, null);
+//		localSip.printout();
+//		rosettaSip.printout();
+		localSip.printoutDiff(rosettaSip);
+	}
+	
+	public static void makeOneToOther() throws Exception {
+		String devIePid = SRU.getIePidToUserDefinedA("dev", "3103");
+		SIP devIeSip = new SIP().loadFromRosetta("dev", devIePid, null);
+		devIeSip.printout();
+	}
+	
 	public static void main(String[] args) throws Exception {
 //		deleteExamples();
 //		createExamples();
 //		loadExamples();
-		compareExampleWithReload();
+//		compareExampleWithReload();
+//		loadRosettaExample();
+//		compareRosettaExampleWithSip();
+		makeOneToOther();
 		System.out.println("Example Ende");
 	}
 }

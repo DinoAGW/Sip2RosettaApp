@@ -1,6 +1,9 @@
 package de.zbmed.utilities;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.InputStream;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,6 +18,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.*;
+import org.xml.sax.InputSource;
 
 public class XML {
 	public class NODE {
@@ -23,7 +27,7 @@ public class XML {
 		NODE(Node node) {
 			this.node = node;
 		}
-		
+
 		public Node getNode() {
 			return this.node;
 		}
@@ -53,17 +57,19 @@ public class XML {
 
 		public String getXPathKey() throws Exception {
 			NamedNodeMap nnm = this.node.getAttributes();
-			if (nnm.getLength() == 0) {
+			if (nnm == null || nnm.getLength() == 0) {
 				return this.node.getNodeName();
 			} else {
-				if (nnm.getLength() != 1) {
-					throw new Exception("Key sollte eigentlich höchstens ein Attribut haben");
-				}
+				StringBuilder ret = new StringBuilder(this.node.getNodeName());
 				Node attribute = nnm.item(0);
-				if (!attribute.getNodeName().contentEquals("xsi:type")) {
-					throw new Exception("Kein Attribut ungleich xsi:type erwartet: " + attribute.getNodeName());
+				if (attribute.getNodeName().equals("xsi:type")) {
+					ret.append("@");
+					ret.append(attribute.getNodeValue());
+				} else if (!attribute.getNodeName().startsWith("xmlns:")) {
+					throw new Exception("Kein Attribut ungleich xsi:type bei Node '" + this.getNodeName()
+							+ "' erwartet: '" + attribute.getNodeName() + "'");
 				}
-				return this.node.getNodeName().concat("@").concat(attribute.getNodeValue());
+				return ret.toString();
 			}
 		}
 
@@ -79,7 +85,8 @@ public class XML {
 			NODELIST ret = new NODELIST();
 			switch (type) {
 			case "nameEquals":
-				if (args.length != 1) throw new Exception("Es müssten 2 Argumente sein");
+				if (args.length != 1)
+					throw new Exception("Es müssten 2 Argumente sein");
 				for (NODE node : this) {
 					if (node.getNodeName().contentEquals(args[0])) {
 						ret.add(node);
@@ -87,7 +94,8 @@ public class XML {
 				}
 				break;
 			case "attrEquals":
-				if (args.length != 3) throw new Exception("Es müssten 3 Argumente sein");
+				if (args.length != 3)
+					throw new Exception("Es müssten 3 Argumente sein");
 				for (NODE node : this) {
 					if (node.getNodeName().contentEquals(args[0])) {
 						String value = node.getAttributes().get(args[1]);
@@ -98,7 +106,8 @@ public class XML {
 				}
 				break;
 			case "attrStartsWith":
-				if (args.length != 3) throw new Exception("Es müssten 3 Argumente sein");
+				if (args.length != 3)
+					throw new Exception("Es müssten 3 Argumente sein");
 				for (NODE node : this) {
 					if (node.getNodeName().contentEquals(args[0])) {
 						String value = node.getAttributes().get(args[1]);
@@ -113,10 +122,16 @@ public class XML {
 			}
 			return ret;
 		}
+
+		public void printNames() throws Exception {
+			for (NODE node : this) {
+				System.out.println(node.getXPathKey());
+			}
+		}
 	}
 
 	private Document metsDoc;
-	
+
 	public Document getDocument() {
 		return this.metsDoc;
 	}
@@ -129,12 +144,23 @@ public class XML {
 			throw new Exception("Argument " + metsFile + " ist keine Datei");
 		}
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		factory.setNamespaceAware(true);//wird gebraucht damit der Namespace nicht verschludert wird
+		factory.setNamespaceAware(true);// wird gebraucht damit der Namespace nicht verschludert wird
 		DocumentBuilder builder = factory.newDocumentBuilder();
 		Document metsDoc = builder.parse(metsFile);
 		metsDoc.setXmlStandalone(true);
 		sanitize(metsDoc);
 		this.metsDoc = metsDoc;
+	}
+
+	public XML(String xmlString) throws Exception {
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		factory.setNamespaceAware(true);// wird gebraucht damit der Namespace nicht verschludert wird
+		DocumentBuilder builder = factory.newDocumentBuilder();
+		InputSource is = new InputSource(new StringReader(xmlString));
+		Document xmlDoc = builder.parse(is);
+		xmlDoc.setXmlStandalone(true);
+		sanitize(xmlDoc);
+		this.metsDoc = xmlDoc;
 	}
 
 	private void sanitize(Node node) {

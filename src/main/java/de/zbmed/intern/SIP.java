@@ -4,14 +4,8 @@ import java.io.File;
 import java.util.Objects;
 import java.util.Stack;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.XmlOptions;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import com.exlibris.core.sdk.formatting.DublinCore;
 import com.exlibris.core.sdk.utils.FileUtil;
@@ -23,8 +17,11 @@ import com.exlibris.digitool.common.dnx.DnxDocumentHelper.GeneralIECharacteristi
 import com.exlibris.dps.sdk.deposit.IEParser;
 import com.exlibris.dps.sdk.deposit.IEParserFactory;
 
+import de.zbmed.rosetta.IEWS;
 import de.zbmed.utilities.Utilities;
 import de.zbmed.utilities.XML;
+import de.zbmed.utilities.XML.NODE;
+import de.zbmed.utilities.XML.NODELIST;
 import gov.loc.mets.MdSecType.MdWrap.MDTYPE;
 import gov.loc.mets.MetsDocument;
 import gov.loc.mets.MetsDocument.Mets;
@@ -310,66 +307,69 @@ public class SIP {
 
 	private SIP loadFromMetsSip(File metsFile) throws Exception {
 		XML metsXml = new XML(metsFile);
-		XML.NODE metsNode = metsXml.getNode().getChildren().filter("nameEquals", "mets:mets").get(0);
-		XML.NODELIST ieMetadata = metsNode.getChildren().filter("attrEquals", "mets:dmdSec", "ID", "ie-dmd").get(0)
+		NODE metsNode = metsXml.getNode().getChildren().filter("nameEquals", "mets:mets").get(0);
+		NODELIST ieMetadata = metsNode.getChildren().filter("attrEquals", "mets:dmdSec", "ID", "ie-dmd").get(0)
 				.getChildren().filter("nameEquals", "mets:mdWrap").get(0).getChildren()
 				.filter("nameEquals", "mets:xmlData").get(0).getChildren().filter("nameEquals", "dc:record").get(0)
 				.getChildren();
-		for (XML.NODE md : ieMetadata) {
+		for (NODE md : ieMetadata) {
 			this.addMetadata(md.getXPathKey(), md.getTextContent());
 		}
-		XML.NODE ieAmd = metsNode.getChildren().filter("attrEquals", "mets:amdSec", "ID", "ie-amd").get(0);
-		XML.NODELIST ieAmdTech = ieAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
+		NODE ieAmd = metsNode.getChildren().filter("attrEquals", "mets:amdSec", "ID", "ie-amd").get(0);
+		NODELIST ieAmdTech = ieAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
 				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
 				.getChildren().filter("nameEquals", "dnx").get(0).getChildren();
-		XML.NODELIST generalIECharacteristics = ieAmdTech.filter("attrEquals", "section", "id",
-				"generalIECharacteristics");
+		NODELIST generalIECharacteristics = ieAmdTech.filter("attrEquals", "section", "id", "generalIECharacteristics");
 		if (!generalIECharacteristics.empty()) {
-			XML.NODELIST generalIECharacteristicsKeys = generalIECharacteristics.get(0).getChildren()
+			NODELIST generalIECharacteristicsKeys = generalIECharacteristics.get(0).getChildren()
 					.filter("nameEquals", "record").get(0).getChildren();
-			XML.NODELIST uda = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedA");
+			NODELIST uda = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedA");
 			if (!uda.empty()) {
 				this.setUserDefined("A", uda.get(0).getTextContent());
 			}
-			XML.NODELIST udb = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedB");
+			NODELIST udb = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedB");
 			if (!udb.empty()) {
 				this.setUserDefined("B", udb.get(0).getTextContent());
 			}
-			XML.NODELIST udc = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedC");
+			NODELIST udc = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedC");
 			if (!udc.empty()) {
 				this.setUserDefined("C", udc.get(0).getTextContent());
 			}
 		}
-		XML.NODELIST cms = ieAmdTech.filter("attrEquals", "section", "id", "CMS");
+		NODELIST cms = ieAmdTech.filter("attrEquals", "section", "id", "CMS");
 		if (!cms.empty()) {
-			XML.NODE record = cms.get(0).getChildren().filter("nameEquals", "record").get(0);
+			NODE record = cms.get(0).getChildren().filter("nameEquals", "record").get(0);
 			String cmsSystem = record.getChildren().filter("attrEquals", "key", "id", "system").get(0).getTextContent();
 			String cmsRecordId = record.getChildren().filter("attrEquals", "key", "id", "recordId").get(0)
 					.getTextContent();
 			this.setCms(cmsSystem, cmsRecordId);
 		}
-		XML.NODELIST sourceMDs = ieAmd.getChildren().filter("attrStartsWith", "mets:sourceMD", "ID", "ie-amd-source");
+		NODELIST sourceMDs = ieAmd.getChildren().filter("attrStartsWith", "mets:sourceMD", "ID", "ie-amd-source");
 		if (sourceMDs != null) {
-			for (XML.NODE sourceMD : sourceMDs) {
+			for (NODE sourceMD : sourceMDs) {
 				String id = sourceMD.getAttributes().get("ID");
 				if (!id.startsWith("ie-amd-source-DC")) {
 					throw new Exception("SourceMD sollte DC sein: " + id);
 				}
-				XML.NODE sourceMDContent = sourceMD.getChildren().filter("nameEquals", "mets:mdWrap").get(0)
-						.getChildren().filter("nameEquals", "mets:xmlData").get(0).getChildren()
-						.filter("nameEquals", "dc:record").get(0);
+				NODE sourceMDContent = sourceMD.getChildren().filter("nameEquals", "mets:mdWrap").get(0).getChildren()
+						.filter("nameEquals", "mets:xmlData").get(0).getChildren().filter("nameEquals", "dc:record")
+						.get(0);
 				this.setSourceMD(MDTYPE.DC, XmlObject.Factory.parse(sourceMDContent.getNode()), null);
 			}
 		}
-		XML.NODE arPolicy = ieAmd.getChildren().filter("nameEquals", "mets:rightsMD").get(0).getChildren()
+		NODELIST accessRightsPolicy = ieAmd.getChildren().filter("nameEquals", "mets:rightsMD").get(0).getChildren()
 				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
 				.getChildren().filter("nameEquals", "dnx").get(0).getChildren()
-				.filter("attrEquals", "section", "id", "accessRightsPolicy").get(0).getChildren()
-				.filter("nameEquals", "record").get(0);
-		this.setARPolicy(arPolicy.getChildren().filter("attrEquals", "key", "id", "policyId").get(0).getTextContent(),
-				arPolicy.getChildren().filter("attrEquals", "key", "id", "policyDescription").get(0).getTextContent());
-		XML.NODELIST repAmds = metsNode.getChildren().filter("attrStartsWith", "mets:amdSec", "ID", "rep");
-		for (XML.NODE repAmd : repAmds) {
+				.filter("attrEquals", "section", "id", "accessRightsPolicy");
+		if (accessRightsPolicy.size() > 0) {
+			NODE arPolicy = accessRightsPolicy.get(0).getChildren().filter("nameEquals", "record").get(0);
+			this.setARPolicy(
+					arPolicy.getChildren().filter("attrEquals", "key", "id", "policyId").get(0).getTextContent(),
+					arPolicy.getChildren().filter("attrEquals", "key", "id", "policyDescription").get(0)
+							.getTextContent());
+		}
+		NODELIST repAmds = metsNode.getChildren().filter("attrStartsWith", "mets:amdSec", "ID", "rep");
+		for (NODE repAmd : repAmds) {
 			String preservationType = repAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
 					.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData")
 					.get(0).getChildren().filter("nameEquals", "dnx").get(0).getChildren()
@@ -396,7 +396,80 @@ public class SIP {
 				"IngestDatei Dateiendung nicht implementiert: " + ingestFilePath.substring(contentPath.length()));
 	}
 
-	public void printoutDiff(SIP otherSip) {
+	public SIP loadFromRosetta(String rosettaInstance, String iePid, XML metsXml) throws Exception {
+		if (metsXml == null) {
+			metsXml = IEWS.getIE(iePid, rosettaInstance);
+		}
+//		System.out.println(XML.getStringFromDocument(metsXml.getDocument()));
+		NODE metsNode = metsXml.getNode().getChildren().filter("nameEquals", "mets:mets").get(0);
+		NODELIST ieMetadata = metsNode.getChildren().filter("attrEquals", "mets:dmdSec", "ID", "ie-dmd").get(0)
+				.getChildren().filter("nameEquals", "mets:mdWrap").get(0).getChildren()
+				.filter("nameEquals", "mets:xmlData").get(0).getChildren().filter("nameEquals", "dc:record").get(0)
+				.getChildren();
+		for (NODE md : ieMetadata) {
+			this.addMetadata(md.getXPathKey(), md.getTextContent());
+		}
+		NODE ieAmd = metsNode.getChildren().filter("attrEquals", "mets:amdSec", "ID", "ie-amd").get(0);
+		NODELIST ieAmdTech = ieAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
+				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
+				.getChildren().filter("nameEquals", "dnx").get(0).getChildren();
+		NODELIST generalIECharacteristics = ieAmdTech.filter("attrEquals", "section", "id", "generalIECharacteristics");
+		if (!generalIECharacteristics.empty()) {
+			NODELIST generalIECharacteristicsKeys = generalIECharacteristics.get(0).getChildren()
+					.filter("nameEquals", "record").get(0).getChildren();
+			NODELIST uda = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedA");
+			if (!uda.empty()) {
+				this.setUserDefined("A", uda.get(0).getTextContent());
+			}
+			NODELIST udb = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedB");
+			if (!udb.empty()) {
+				this.setUserDefined("B", udb.get(0).getTextContent());
+			}
+			NODELIST udc = generalIECharacteristicsKeys.filter("attrEquals", "key", "id", "UserDefinedC");
+			if (!udc.empty()) {
+				this.setUserDefined("C", udc.get(0).getTextContent());
+			}
+		}
+		NODELIST cms = ieAmdTech.filter("attrEquals", "section", "id", "CMS");
+		if (!cms.empty()) {
+			NODE record = cms.get(0).getChildren().filter("nameEquals", "record").get(0);
+			String cmsSystem = record.getChildren().filter("attrEquals", "key", "id", "system").get(0).getTextContent();
+			String cmsRecordId = record.getChildren().filter("attrEquals", "key", "id", "recordId").get(0)
+					.getTextContent();
+			this.setCms(cmsSystem, cmsRecordId);
+		}
+		NODELIST sourceMDs = ieAmd.getChildren().filter("attrStartsWith", "mets:sourceMD", "ID", "ie-amd-source");
+		if (sourceMDs != null) {
+			for (NODE sourceMD : sourceMDs) {
+				NODE sourceMDContent = sourceMD.getChildren().filter("nameEquals", "mets:mdWrap").get(0).getChildren()
+						.filter("nameEquals", "mets:xmlData").get(0);
+				this.setSourceMD(MDTYPE.DC, XmlObject.Factory.parse(sourceMDContent.getNode()), null);
+			}
+		}
+		NODE arPolicy = ieAmd.getChildren().filter("nameEquals", "mets:rightsMD").get(0).getChildren()
+				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
+				.getChildren().filter("nameEquals", "dnx").get(0).getChildren()
+				.filter("attrEquals", "section", "id", "accessRightsPolicy").get(0).getChildren()
+				.filter("nameEquals", "record").get(0);
+		this.setARPolicy(arPolicy.getChildren().filter("attrEquals", "key", "id", "policyId").get(0).getTextContent(),
+				arPolicy.getChildren().filter("attrEquals", "key", "id", "policyDescription").get(0).getTextContent());
+		NODELIST repAmds = metsNode.getChildren().filter("attrStartsWith", "mets:amdSec", "ID", "REP");
+		for (NODE repAmd : repAmds) {
+			String preservationType = repAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
+					.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData")
+					.get(0).getChildren().filter("nameEquals", "dnx").get(0).getChildren()
+					.filter("attrEquals", "section", "id", "generalRepCharacteristics").get(0).getChildren()
+					.filter("nameEquals", "record").get(0).getChildren()
+					.filter("attrEquals", "key", "id", "preservationType").get(0).getTextContent();
+			REP rep = this.newREP(preservationType);
+			String id = repAmd.getAttributes().get("ID");
+			id = id.substring(0, id.indexOf("-"));
+			rep.loadFromRosetta(rosettaInstance, iePid, metsXml, id);
+		}
+		return this;
+	}
+
+	public void printoutDiff(SIP otherSip) throws Exception {
 		if (!Objects.equals(this.userDefinedA, otherSip.userDefinedA)) {
 			System.out.println("Hier: UserDefinedA " + this.userDefinedA);
 			System.out.println("Dort: UserDefinedA " + otherSip.userDefinedA);
@@ -422,7 +495,7 @@ public class SIP {
 			cms2.append(quote(otherSip.cmsRecordId));
 			System.out.println(cms2);
 		}
-		StringBuilder mds = new StringBuilder("Metadaten Unterschiede:");
+		StringBuilder mds = null;
 		for (Metadata md : this.metadata) {
 			boolean same = false;
 			for (Metadata md2 : otherSip.metadata) {
@@ -432,6 +505,9 @@ public class SIP {
 				}
 			}
 			if (!same) {
+				if (mds == null) {
+					mds = new StringBuilder("Metadaten Unterschiede:");
+				}
 				mds.append("\nHier: ");
 				mds.append(quote(md.xPathKey));
 				mds.append(" = ");
@@ -447,13 +523,18 @@ public class SIP {
 				}
 			}
 			if (!same) {
+				if (mds == null) {
+					mds = new StringBuilder("Metadaten Unterschiede:");
+				}
 				mds.append("\nDort: ");
 				mds.append(quote(md.xPathKey));
 				mds.append(" = ");
 				mds.append(quote(md.value));
 			}
 		}
-		System.out.println(mds);
+		if (mds != null) {
+			System.out.println(mds);
+		}
 		String smd = this.sourceMd == null ? null : this.sourceMd.toString();
 		String smd2 = otherSip.sourceMd == null ? null : otherSip.sourceMd.toString();
 		if (!Objects.equals(this.sourceMdType, otherSip.sourceMdType) || !Objects.equals(smd, smd2)) {
