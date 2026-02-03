@@ -7,6 +7,7 @@ import java.util.Stack;
 import org.apache.xmlbeans.XmlObject;
 import org.apache.xmlbeans.XmlOptions;
 
+import com.exlibris.core.sdk.consts.Enum;
 import com.exlibris.core.sdk.formatting.DublinCore;
 import com.exlibris.core.sdk.utils.FileUtil;
 import com.exlibris.digitool.common.dnx.DnxDocument;
@@ -25,8 +26,6 @@ import de.zbmed.utilities.XML.NODELIST;
 import gov.loc.mets.MdSecType.MdWrap.MDTYPE;
 import gov.loc.mets.MetsDocument;
 import gov.loc.mets.MetsDocument.Mets;
-
-import com.exlibris.core.sdk.consts.Enum;
 
 public class SIP {
 	private class Metadata {
@@ -257,7 +256,7 @@ public class SIP {
 		}
 	}
 
-	public void printout() {
+	public SIP printout() {
 		System.out.println("SIP:");
 		StringBuilder ud = new StringBuilder("UserDefined = [");
 		ud.append(quote(this.userDefinedA));
@@ -303,6 +302,7 @@ public class SIP {
 			rep.printout();
 		}
 		System.out.println("SIP Ende");
+		return this;
 	}
 
 	private SIP loadFromMetsSip(File metsFile) throws Exception {

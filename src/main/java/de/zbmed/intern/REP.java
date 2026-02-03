@@ -17,16 +17,16 @@ import de.zbmed.utilities.XML;
 import de.zbmed.utilities.XML.NODE;
 import de.zbmed.utilities.XML.NODELIST;
 import gov.loc.mets.DivType;
-import gov.loc.mets.StructMapType;
 import gov.loc.mets.MetsDocument.Mets;
 import gov.loc.mets.MetsType.FileSec.FileGrp;
+import gov.loc.mets.StructMapType;
 
 public class REP {
 	private static final String fs = System.getProperty("file.separator");
 
 	String preservationType;
 	Stack<FILE> files = new Stack<>();
-	String label;
+	String label = null;
 	String arPolicyId = "AR_EVERYONE";
 	String arPolicyDescription = "Keine Beschränkung";
 
@@ -177,13 +177,17 @@ public class REP {
 			String fileId = file.getAttributes().get("ID");
 			String dateipfad = "file:///".concat(metsFile.getParent()).concat(fs).concat("streams").concat(fs)
 					.concat(file.getChildren().get(0).getAttributes().get("xlin:href"));
-			String fileOriginalPath = metsNode.getChildren()
+			String fileOriginalPath = null;
+			NODELIST fileOriginalPaths = metsNode.getChildren()
 					.filter("attrEquals", "mets:amdSec", "ID", fileId.concat("-amd")).get(0).getChildren()
 					.filter("nameEquals", "mets:techMD").get(0).getChildren().filter("nameEquals", "mets:mdWrap").get(0)
 					.getChildren().filter("nameEquals", "mets:xmlData").get(0).getChildren().filter("nameEquals", "dnx")
 					.get(0).getChildren().filter("attrEquals", "section", "id", "generalFileCharacteristics").get(0)
 					.getChildren().filter("nameEquals", "record").get(0).getChildren()
-					.filter("attrEquals", "key", "id", "fileOriginalPath").get(0).getTextContent();
+					.filter("attrEquals", "key", "id", "fileOriginalPath");
+			if (fileOriginalPaths.size() == 1) {
+				fileOriginalPath = fileOriginalPaths.get(0).getTextContent();
+			}
 			this.newFile(dateipfad, fileOriginalPath).loadFromSip(metsFile, fileId);
 		}
 		return this;
@@ -208,13 +212,15 @@ public class REP {
 					.filter("attrEquals", "key", "id", "policyDescription").get(0).getTextContent();
 			this.setARPolicy(arPolicyId, arPolicyDescription);
 		}
-		String label = repAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
+		NODELIST labels = repAmd.getChildren().filter("nameEquals", "mets:techMD").get(0).getChildren()
 				.filter("nameEquals", "mets:mdWrap").get(0).getChildren().filter("nameEquals", "mets:xmlData").get(0)
 				.getChildren().filter("nameEquals", "dnx").get(0).getChildren()
 				.filter("attrEquals", "section", "id", "generalRepCharacteristics").get(0).getChildren()
-				.filter("nameEquals", "record").get(0).getChildren().filter("attrEquals", "key", "id", "label").get(0)
-				.getTextContent();
-		this.setLabel(label);
+				.filter("nameEquals", "record").get(0).getChildren().filter("attrEquals", "key", "id", "label");
+		if (labels.size() == 1) {
+			String label = labels.get(0).getTextContent();
+			this.setLabel(label);
+		}
 		NODELIST files = metsNode.getChildren().filter("nameEquals", "mets:fileSec").get(0).getChildren()
 				.filter("attrEquals", "mets:fileGrp", "ID", id).get(0).getChildren();
 		for (NODE file : files) {

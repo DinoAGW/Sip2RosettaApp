@@ -3,11 +3,12 @@ import java.io.File;
 import org.apache.commons.io.FileUtils;
 import org.apache.xmlbeans.XmlObject;
 
-import gov.loc.mets.MdSecType.MdWrap.MDTYPE;
-import de.zbmed.intern.*;
+import de.zbmed.intern.REP;
+import de.zbmed.intern.SIP;
 import de.zbmed.rosetta.IEWS;
 import de.zbmed.rosetta.SRU;
 import de.zbmed.utilities.XML;
+import gov.loc.mets.MdSecType.MdWrap.MDTYPE;
 
 public class Examples {
 	private static final String fs = System.getProperty("file.separator");
@@ -82,7 +83,7 @@ public class Examples {
 		maximalSip.loadFromSip(new File("bin" + fs + "maximalSip" + fs + "content" + fs + "mets.xml"));
 //		maximalSip.printout();
 	}
-	
+
 	public static void compareExampleWithReload() throws Exception {
 		SIP maximalSip = new SIP(); // Erstelle neue SIP
 		maximalSip.addMetadata("dc:title", "Titel"); // Füge ein Metadatum hinzu
@@ -94,14 +95,16 @@ public class Examples {
 		maximalSip.addMetadata("dc:identifier@dcterms:URI", "uri2");
 		maximalSip.setUserDefined("A", "Ich bins"); // Füge UserDefinedA hinzu
 		maximalSip.setCms("HBZ01", "HT020566828"); // Füge CMS hinzu
-		maximalSip.setSourceMD(MDTYPE.DC, sourceMD, null); // Füge SourceMD vom Type DC hinzu. Bei Type OTHER wird das dritte
-													// Argument benötigt um den Type zu spezifizieren.
+		maximalSip.setSourceMD(MDTYPE.DC, sourceMD, null); // Füge SourceMD vom Type DC hinzu. Bei Type OTHER wird das
+															// dritte
+		// Argument benötigt um den Type zu spezifizieren.
 		maximalSip.setARPolicy("433120", "ZB MED_STAFF only"); // Setze ARPolicy auf SIP-Ebene
 		rep1.newFile(testDatei, "1".concat(fs)).setARPolicy("433120", "ZB MED_STAFF only"); // Füge Datei in den
 																							// Unterordner 1\ ein und
 																							// setze ARPolicy auf
 																							// File-Ebene
-		REP rep2 = maximalSip.newREP("MODIFIED_MASTER").setLabel("Andere Representation"); // Füge neue Repräsentation hinzu
+		REP rep2 = maximalSip.newREP("MODIFIED_MASTER").setLabel("Andere Representation"); // Füge neue Repräsentation
+																							// hinzu
 		/*
 		 * Speichere testDatei unter einen anderen Namen in den Unterordner 2\ und
 		 * notiere md5Summe dazu (wird beim deploy überprüft, ob die stimmt)
@@ -114,11 +117,11 @@ public class Examples {
 																								// hinzu
 
 		SIP sipHD = new SIP().loadFromSip(new File("bin" + fs + "minimalSip" + fs + "content" + fs + "mets.xml"));
-		
+
 		sipHD.newREP("MODIFIED_MASTER").newFile(testDatei, "Test4.txt");
 		maximalSip.printoutDiff(sipHD);
 	}
-	
+
 	public static void loadRosettaExample() throws Exception {
 		String rosettaInstance = "prod";
 		String userDefinedA = "GMSKON_24dgpp10";
@@ -130,24 +133,45 @@ public class Examples {
 		rosettaSip.loadFromRosetta(rosettaInstance, iePid, null);
 		rosettaSip.printout();
 	}
-	
+
 	public static void compareRosettaExampleWithSip() throws Exception {
 		String rosettaInstance = "prod";
 		String userDefinedA = "GMSKON_24dgpp10";
 		String iePid = SRU.getIePidToUserDefinedA(rosettaInstance, userDefinedA);
-		SIP localSip = new SIP().loadFromSip(new File(home + fs + "workspace" + fs + "versuchssip_dgpp2024_24dgpp10" + fs + "content" + fs + "ie1.xml"));
+		SIP localSip = new SIP().loadFromSip(new File(
+				home + fs + "workspace" + fs + "versuchssip_dgpp2024_24dgpp10" + fs + "content" + fs + "ie1.xml"));
 		SIP rosettaSip = new SIP().loadFromRosetta(rosettaInstance, iePid, null);
 //		localSip.printout();
 //		rosettaSip.printout();
 		localSip.printoutDiff(rosettaSip);
 	}
-	
-	public static void makeOneToOther() throws Exception {
-		String devIePid = SRU.getIePidToUserDefinedA("dev", "3103");
-		SIP devIeSip = new SIP().loadFromRosetta("dev", devIePid, null);
-		devIeSip.printout();
+
+	/*
+	 * update eine IE in Rosetta derart, dass sie wie eine SIP von der Festplatte
+	 * aussieht
+	 */
+	public static void makeOneToOther(String rosettaInstance) throws Exception {
+		int version = 1;
+		String sipPath = "bin" + fs + "vorbildSip" + version;
+		SIP sip = new SIP();
+		String userDefinedA = "uda" + version;
+		sip.setUserDefined("A", userDefinedA);
+		sip.addMetadata("dc:title", "Titel");
+		REP rep1 = sip.newREP(null);
+		rep1.newFile(testDatei, null);
+		sip.printout();
+		sip.saveAllToSip(sipPath);
+		File ingestFile = new File(sipPath + fs + "ie.xml");
+		System.out.println("Vorher:");
+		String devIePid = SRU.getIePidToUserDefinedA(rosettaInstance, userDefinedA);
+		SIP devIeSip = new SIP().loadFromRosetta(rosettaInstance, devIePid, null).printout();
+		System.out.println("Vorbild:");
+		SIP vorbildSip = new SIP().loadFromSip(ingestFile).printout();
+		System.out.println("Differenz:");
+		devIeSip.printoutDiff(vorbildSip);
+
 	}
-	
+
 	public static void main(String[] args) throws Exception {
 //		deleteExamples();
 //		createExamples();
@@ -155,7 +179,7 @@ public class Examples {
 //		compareExampleWithReload();
 //		loadRosettaExample();
 //		compareRosettaExampleWithSip();
-		makeOneToOther();
+//		makeOneToOther(new File("bin" + fs + "minimalSip" + fs + "content" + fs + "mets.xml"), "dev", "3103");
 		System.out.println("Example Ende");
 	}
 }
