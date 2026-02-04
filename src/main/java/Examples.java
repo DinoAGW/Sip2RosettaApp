@@ -153,6 +153,8 @@ public class Examples {
 	public static void makeOneToOther(String rosettaInstance) throws Exception {
 		int version = 1;
 		String sipPath = "bin" + fs + "vorbildSip" + version;
+		if (new File(sipPath).exists())
+			throw new Exception("Sollte vorher nicht existieren");
 		SIP sip = new SIP();
 		String userDefinedA = "uda" + version;
 		sip.setUserDefined("A", userDefinedA);
@@ -161,6 +163,7 @@ public class Examples {
 		rep1.newFile(testDatei, null);
 		sip.printout();
 		sip.saveAllToSip(sipPath);
+		// TODO: ingeste die hier gebuildete IE
 		File ingestFile = new File(sipPath + fs + "ie.xml");
 		System.out.println("Vorher:");
 		String devIePid = SRU.getIePidToUserDefinedA(rosettaInstance, userDefinedA);
