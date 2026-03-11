@@ -2,7 +2,7 @@ package de.zbmed.rosetta;
 
 import java.nio.charset.StandardCharsets;
 
-import de.zbmed.utilities.Customs;
+import de.zbmed.utilities.Custom;
 import de.zbmed.utilities.XML;
 import de.zbmed.utilities.XML.NODELIST;
 //import de.zbmed.utilities.WebServices;
@@ -14,7 +14,7 @@ public class SRU {
 		command[0] = "curl";
 		command[1] = "-H";
 		command[2] = "Authorization: ".concat(Authentification.getAuthToken(rosettaInstance));
-		command[3] = Customs.getSRU_URL(rosettaInstance)
+		command[3] = Custom.getSRU_URL(rosettaInstance)
 				.concat("?version=1.2&auth=local&operation=searchRetrieve&query=").concat(query)
 				.concat("&maximumRecords=10000&recordSchema=dc");
 		ProcessBuilder pb = new ProcessBuilder(command);

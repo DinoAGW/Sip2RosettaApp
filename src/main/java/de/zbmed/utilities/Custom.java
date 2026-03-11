@@ -1,7 +1,6 @@
 package de.zbmed.utilities;
 
-
-public class Customs {	
+public class Custom {
 	static final String fs = System.getProperty("file.separator");
 
 	public static String getRosettaURL(String rosettaInstance) throws Exception {
@@ -68,6 +67,26 @@ public class Customs {
 	public static String getIE_WSDL_URL(String rosettaURL) {
 		return rosettaURL.concat("/dpsws/repository/IEWebServices?wsdl");
 	}
-	
-	
+
+	public static String getSftpUsername() throws Exception {
+		String propertyDateiPfad = System.getProperty("user.home").concat(fs).concat("Rosetta_Properties.txt");
+		PropertiesManager prop = new PropertiesManager(propertyDateiPfad);
+		return prop.readStringFromProperty("sftpUsername");
+	}
+
+	public static String getSftpKeyFile() throws Exception {
+		String propertyDateiPfad = System.getProperty("user.home").concat(fs).concat("Rosetta_Properties.txt");
+		PropertiesManager prop = new PropertiesManager(propertyDateiPfad);
+		return prop.readStringFromProperty("sftpKeyFile");
+	}
+
+	public static String getSftpKeyPwd() throws Exception {
+		String propertyDateiPfad = System.getProperty("user.home").concat(fs).concat("Rosetta_Properties.txt");
+		PropertiesManager prop = new PropertiesManager(propertyDateiPfad);
+		return prop.readStringFromProperty("sftpKeyPwd");
+	}
+
+	public static String getSftpAdresse() throws Exception {
+		return "transfer.lza.tib.eu";
+	}
 }

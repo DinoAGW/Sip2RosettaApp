@@ -56,11 +56,11 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.exlibris</groupId>
-			<artifactId>sdk</artifactId>
+			<artifactId>dps-sdk</artifactId>
 			<!-- Version 8.1.0 macht Probleme -->
 			<version>7.3.0</version>
-			<scope>system</scope>
-			<systemPath>${project.basedir}/lib/dps-sdk-7.3.0.jar</systemPath>
+<!--			<scope>system</scope>-->
+<!--			<systemPath>${project.basedir}/lib/dps-sdk-7.3.0.jar</systemPath>-->
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/org.dom4j/dom4j -->
 		<dependency>
@@ -162,6 +162,12 @@
 			<groupId>commons-lang</groupId>
 			<artifactId>commons-lang</artifactId>
 			<version>2.6</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.github.mwiede/jsch -->
+		<dependency>
+			<groupId>com.github.mwiede</groupId>
+			<artifactId>jsch</artifactId>
+			<version>2.27.2</version>
 		</dependency>
 	</dependencies>
 </project>
