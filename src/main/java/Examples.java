@@ -156,14 +156,19 @@ public class Examples {
 		if (new File(sipPath).exists())
 			throw new Exception("Sollte vorher nicht existieren");
 		SIP sip = new SIP();
-		String userDefinedA = "uda" + version;
+		String userDefinedA = "uda_1";
 		sip.setUserDefined("A", userDefinedA);
+		sip.setUserDefined("B", Integer.toString(version));
 		sip.addMetadata("dc:title", "Titel");
 		REP rep1 = sip.newREP(null);
 		rep1.newFile(testDatei, null);
 		sip.printout();
 		sip.saveAllToSip(sipPath);
 		// TODO: ingeste die hier gebuildete IE
+//		Transferserver ts = new Transferserver();
+//		ts.uploadFolder(sipPath + fs, "/exchange/lza/lza-zbmed/dev/frl/vorbildSip" + version + "/");
+//		ts.disconnect();
+
 		File ingestFile = new File(sipPath + fs + "ie.xml");
 		System.out.println("Vorher:");
 		String devIePid = SRU.getIePidToUserDefinedA(rosettaInstance, userDefinedA);
@@ -182,7 +187,7 @@ public class Examples {
 //		compareExampleWithReload();
 //		loadRosettaExample();
 //		compareRosettaExampleWithSip();
-//		makeOneToOther(new File("bin" + fs + "minimalSip" + fs + "content" + fs + "mets.xml"), "dev", "3103");
+		makeOneToOther("dev");
 		System.out.println("Example Ende");
 	}
 }
